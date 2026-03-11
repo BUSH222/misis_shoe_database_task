@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Вход - Магазин обуви{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center secondary-bg">
+                <h3>Вход в систему</h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <img src="/static/Icon.png" alt="Логотип" style="height: 100px;">
+                </div>
+                
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+                
+                <form method="post" action="/login">
+                    <div class="mb-3">
+                        <label for="login" class="form-label">Логин</label>
+                        <input type="text" class="form-control" id="login" name="login" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Пароль</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Войти</button>
+                        <a href="/guest" class="btn btn-secondary">Продолжить как гость</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

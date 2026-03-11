@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Товары - Магазин обуви{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Каталог товаров</h2>
+
+{% if user %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <input type="text" 
+               class="form-control" 
+               id="searchInput" 
+               placeholder="Поиск товаров..."
+               value="{{ current_search }}">
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" id="categoryFilter">
+            <option value="">Все категории</option>
+            {% for category in categories %}
+            <option value="{{ category }}" {% if category == current_category %}selected{% endif %}>
+                {{ category }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" id="sortSelect">
+            <option value="">Без сортировки</option>
+            <option value="name" {% if current_sort == 'name' %}selected{% endif %}>По названию</option>
+            <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>По цене (возр.)</option>
+            <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>По цене (убыв.)</option>
+            <option value="discount" {% if current_sort == 'discount' %}selected{% endif %}>По скидке</option>
+        </select>
+    </div>
+</div>
+{% endif %}
+
+<div id="productList">
+    {% for product in products %}
+    {% set discount = product.discount %}
+    {% set discounted_price = product.price * (1 - discount / 100) %}
+    {% set row_class = '' %}
+    {% if product.stock_quantity == 0 %}
+        {% set row_class = 'out-of-stock' %}
+    {% elif discount > 15 %}
+        {% set row_class = 'highlight-discount' %}
+    {% endif %}
+    
+    <div class="row mb-3 p-3 border rounded {{ row_class }}">
+        <div class="col-md-4 col-lg-4">
+            {% if product.photo %}
+            <img src="/static/{{ product.photo }}" 
+                 class="img-fluid" 
+                 alt="{{ product.name }}"
+                 onerror="this.src='/static/picture.png'">
+            {% else %}
+            <img src="/static/picture.png" class="img-fluid" alt="Нет изображения">
+            {% endif %}
+        </div>
+        <div class="col-md-6 col-lg-6">
+            <h5>{{ product.category.name }} | {{ product.name }}</h5>
+            <p><strong>Описание товара:</strong> {{ product.description }}</p>
+            <p><strong>Производитель:</strong> {{ product.manufacturer.name }}</p>
+            <p><strong>Поставщик:</strong> {{ product.supplier.name }}</p>
+            <p>
+                <strong>Цена:</strong> 
+                {% if discount > 0 %}
+                    <span class="original-price">{{ "%.2f"|format(product.price) }} ₽</span>
+                    <span class="final-price">{{ "%.2f"|format(discounted_price) }} ₽</span>
+                {% else %}
+                    {{ "%.2f"|format(product.price) }} ₽
+                {% endif %}
+            </p>
+            <p><strong>Единица измерения:</strong> {{ product.unit.name }}</p>
+            <p><strong>Количество на складе:</strong> {{ product.stock_quantity }}</p>
+        </div>
+        <div class="col-md-2 col-lg-2 text-center d-flex align-items-center justify-content-center">
+            <h3>{{ discount }}%</h3>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if products|length == 0 %}
+<div class="alert alert-info">
+    Товары не найдены
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if user %}
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const sortSelect = document.getElementById('sortSelect');
+    
+    function updateProducts() {
+        const searchValue = searchInput.value;
+        const categoryValue = categoryFilter.value;
+        const sortValue = sortSelect.value;
+        
+        const params = new URLSearchParams();
+        if (searchValue) params.append('search', searchValue);
+        if (categoryValue) params.append('category', categoryValue);
+        if (sortValue) params.append('sort', sortValue);
+        
+        const url = '/products' + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+    
+    // Real-time search with debounce
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(updateProducts, 500);
+    });
+    
+    // Real-time filter and sort
+    categoryFilter.addEventListener('change', updateProducts);
+    sortSelect.addEventListener('change', updateProducts);
+</script>
+{% endif %}
+{% endblock %}

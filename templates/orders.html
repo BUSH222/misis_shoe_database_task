@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Заказы - Магазин обуви{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Список заказов</h2>
+
+{% for order in orders %}
+<div class="row mb-3 p-3 border rounded">
+    <div class="col-md-4">
+        <h5>Заказ № {{ order.order_number }}</h5>
+        <p><strong>Статус:</strong> {{ order.status }}</p>
+        <p><strong>Код для получения:</strong> {{ order.pickup_code }}</p>
+    </div>
+    <div class="col-md-6">
+        <p><strong>Дата заказа:</strong> {{ order.order_date.strftime('%d.%m.%Y') }}</p>
+        <p><strong>Дата доставки:</strong> {{ order.delivery_date.strftime('%d.%m.%Y') }}</p>
+        <p><strong>Клиент:</strong> {{ order.user.full_name }}</p>
+        <p><strong>Пункт выдачи:</strong> {{ order.pickup_point.address }}</p>
+        <p><strong>Товары:</strong></p>
+        <ul>
+            {% for item in order.order_items %}
+            <li>{{ item.product.name }} ({{ item.product.article }}) - {{ item.quantity }} шт.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+        {% set total = namespace(value=0) %}
+        {% for item in order.order_items %}
+            {% set discount_price = item.product.price * (1 - item.product.discount / 100) %}
+            {% set total.value = total.value + (discount_price * item.quantity) %}
+        {% endfor %}
+        <div>
+            <h5>Итого:</h5>
+            <h4>{{ "%.2f"|format(total.value) }} ₽</h4>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if orders|length == 0 %}
+<div class="alert alert-info">
+    Заказы не найдены
+</div>
+{% endif %}
+
+{% endblock %}
