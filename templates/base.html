@@ -73,9 +73,11 @@
                         <a class="nav-link" href="/products">Товары</a>
                     </li>
                     {% if user %}
+                    {% if user.role.name in ['Администратор', 'Менеджер'] %}
                     <li class="nav-item">
                         <a class="nav-link" href="/orders">Заказы</a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <span class="nav-link">{{ user.full_name }} ({{ user.role.name }})</span>
                     </li>
@@ -93,6 +95,13 @@
     </nav>
     
     <div class="container mt-4">
+        {% if flash_message %}
+        <div class="alert alert-{{ flash_type }} alert-dismissible fade show" role="alert">
+            {{ flash_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
         {% block content %}{% endblock %}
     </div>
     

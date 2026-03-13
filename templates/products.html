@@ -3,34 +3,55 @@
 {% block title %}Товары - Магазин обуви{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Каталог товаров</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Каталог товаров</h2>
+    {% if is_admin %}
+    <button class="btn btn-primary" onclick="openAddModal()">Добавить товар</button>
+    {% endif %}
+</div>
 
 {% if user %}
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <input type="text" 
                class="form-control" 
                id="searchInput" 
-               placeholder="Поиск товаров..."
+               placeholder="Поиск..."
                value="{{ current_search }}">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <select class="form-select" id="categoryFilter">
             <option value="">Все категории</option>
-            {% for category in categories %}
+            {% for category in category_names %}
             <option value="{{ category }}" {% if category == current_category %}selected{% endif %}>
                 {{ category }}
             </option>
             {% endfor %}
         </select>
     </div>
-    <div class="col-md-4">
+    {% if is_manager %}
+    <div class="col-md-3">
+        <select class="form-select" id="supplierFilter">
+            <option value="">Все поставщики</option>
+            {% for supplier in supplier_names %}
+            <option value="{{ supplier }}" {% if supplier == current_supplier %}selected{% endif %}>
+                {{ supplier }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    <div class="{% if is_manager %}col-md-3{% else %}col-md-6{% endif %}">
         <select class="form-select" id="sortSelect">
             <option value="">Без сортировки</option>
             <option value="name" {% if current_sort == 'name' %}selected{% endif %}>По названию</option>
             <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>По цене (возр.)</option>
             <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>По цене (убыв.)</option>
             <option value="discount" {% if current_sort == 'discount' %}selected{% endif %}>По скидке</option>
+            {% if is_manager %}
+            <option value="stock_asc" {% if current_sort == 'stock_asc' %}selected{% endif %}>По количеству (возр.)</option>
+            <option value="stock_desc" {% if current_sort == 'stock_desc' %}selected{% endif %}>По количеству (убыв.)</option>
+            {% endif %}
         </select>
     </div>
 </div>
@@ -47,7 +68,7 @@
         {% set row_class = 'highlight-discount' %}
     {% endif %}
     
-    <div class="row mb-3 p-3 border rounded {{ row_class }}">
+    <div class="row mb-3 p-3 border rounded {{ row_class }}" {% if is_admin %}style="cursor: pointer;" onclick="openEditModal({{ product.id }}, '{{ product.article }}', '{{ product.name | replace('\'', '\\\'') }}', {{ product.category_id }}, '{{ product.description | replace('\n', ' ') | replace('\r', '') | replace('\'', '\\\'') }}', {{ product.manufacturer_id }}, '{{ product.supplier.name | replace('\'', '\\\'') }}', {{ product.price }}, '{{ product.unit.name | replace('\'', '\\\'') }}', {{ product.stock_quantity }}, {{ product.discount }})"{% endif %}>
         <div class="col-md-4 col-lg-4">
             {% if product.photo %}
             <img src="/static/{{ product.photo }}" 
@@ -59,7 +80,7 @@
             {% endif %}
         </div>
         <div class="col-md-6 col-lg-6">
-            <h5>{{ product.category.name }} | {{ product.name }}</h5>
+            <h5>{{ product.category.name }} | {{ product.name }} ({{ product.article }})</h5>
             <p><strong>Описание товара:</strong> {{ product.description }}</p>
             <p><strong>Производитель:</strong> {{ product.manufacturer.name }}</p>
             <p><strong>Поставщик:</strong> {{ product.supplier.name }}</p>
@@ -75,8 +96,15 @@
             <p><strong>Единица измерения:</strong> {{ product.unit.name }}</p>
             <p><strong>Количество на складе:</strong> {{ product.stock_quantity }}</p>
         </div>
-        <div class="col-md-2 col-lg-2 text-center d-flex align-items-center justify-content-center">
+        <div class="col-md-2 col-lg-2 text-center d-flex flex-column align-items-center justify-content-center">
             <h3>{{ discount }}%</h3>
+            {% if is_admin %}
+            <div class="mt-3" onclick="event.stopPropagation();">
+                <form method="POST" action="/products/{{ product.id }}/delete" onsubmit="return confirm('Вы уверены, что хотите удалить этот товар?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
@@ -88,6 +116,81 @@
 </div>
 {% endif %}
 
+{% if is_admin %}
+<!-- Product Modal -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalTitle">Добавить товар</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="productForm" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3" id="articleContainer">
+                            <label>Артикул</label>
+                            <input type="text" class="form-control" name="article" id="formArticle" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Наименование</label>
+                            <input type="text" class="form-control" name="name" id="formName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Категория</label>
+                            <select class="form-select" name="category_id" id="formCategory" required>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Производитель</label>
+                            <select class="form-select" name="manufacturer_id" id="formManufacturer" required>
+                                {% for mf in manufacturers %}
+                                <option value="{{ mf.id }}">{{ mf.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Поставщик</label>
+                            <input type="text" class="form-control" name="supplier_name" id="formSupplier" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Единица измерения</label>
+                            <input type="text" class="form-control" name="unit_name" id="formUnit" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Цена</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="price" id="formPrice" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Скидка (%)</label>
+                            <input type="number" min="0" max="100" class="form-control" name="discount" id="formDiscount" value="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Количество на складе</label>
+                            <input type="number" min="0" class="form-control" name="stock_quantity" id="formStock" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label>Фото (макс. 300x200)</label>
+                            <input type="file" class="form-control" name="photo" accept="image/*">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label>Описание</label>
+                            <textarea class="form-control" name="description" id="formDescription" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -95,32 +198,80 @@
 <script>
     const searchInput = document.getElementById('searchInput');
     const categoryFilter = document.getElementById('categoryFilter');
+    const supplierFilter = document.getElementById('supplierFilter');
     const sortSelect = document.getElementById('sortSelect');
     
     function updateProducts() {
         const searchValue = searchInput.value;
-        const categoryValue = categoryFilter.value;
+        const categoryValue = categoryFilter ? categoryFilter.value : '';
+        const supplierValue = supplierFilter ? supplierFilter.value : '';
         const sortValue = sortSelect.value;
         
         const params = new URLSearchParams();
         if (searchValue) params.append('search', searchValue);
         if (categoryValue) params.append('category', categoryValue);
+        if (supplierValue) params.append('supplier_filter', supplierValue);
         if (sortValue) params.append('sort', sortValue);
         
         const url = '/products' + (params.toString() ? '?' + params.toString() : '');
         window.location.href = url;
     }
     
-    // Real-time search with debounce
     let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(updateProducts, 500);
-    });
+    if(searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(updateProducts, 500);
+        });
+    }
     
-    // Real-time filter and sort
-    categoryFilter.addEventListener('change', updateProducts);
-    sortSelect.addEventListener('change', updateProducts);
+    if(categoryFilter) categoryFilter.addEventListener('change', updateProducts);
+    if(supplierFilter) supplierFilter.addEventListener('change', updateProducts);
+    if(sortSelect) sortSelect.addEventListener('change', updateProducts);
+
+    {% if is_admin %}
+    let productModal;
+    document.addEventListener("DOMContentLoaded", function() {
+        productModal = new bootstrap.Modal(document.getElementById('productModal'));
+    });
+
+    function openAddModal() {
+        document.getElementById('productModalTitle').innerText = 'Добавить товар';
+        document.getElementById('productForm').action = '/products/add';
+        
+        document.getElementById('formArticle').value = '';
+        document.getElementById('formArticle').readOnly = false;
+        document.getElementById('formName').value = '';
+        document.getElementById('formDescription').value = '';
+        document.getElementById('formSupplier').value = '';
+        document.getElementById('formUnit').value = '';
+        document.getElementById('formPrice').value = '';
+        document.getElementById('formStock').value = '0';
+        document.getElementById('formDiscount').value = '0';
+        
+        productModal.show();
+    }
+
+    function openEditModal(id, article, name, catId, desc, mfgId, supplier, price, unit, stock, discount) {
+        document.getElementById('productModalTitle').innerText = 'Редактировать товар (ID: ' + id + ')';
+        document.getElementById('productForm').action = '/products/' + id + '/edit';
+        
+        document.getElementById('formArticle').value = article;
+        document.getElementById('formArticle').readOnly = true;
+        
+        document.getElementById('formName').value = name;
+        document.getElementById('formCategory').value = catId;
+        document.getElementById('formDescription').value = desc;
+        document.getElementById('formManufacturer').value = mfgId;
+        document.getElementById('formSupplier').value = supplier;
+        document.getElementById('formPrice').value = price;
+        document.getElementById('formUnit').value = unit;
+        document.getElementById('formStock').value = stock;
+        document.getElementById('formDiscount').value = discount;
+        
+        productModal.show();
+    }
+    {% endif %}
 </script>
 {% endif %}
 {% endblock %}
