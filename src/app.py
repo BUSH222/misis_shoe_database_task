@@ -13,6 +13,9 @@ from datetime import datetime
 from src.database import init_db, get_db
 from src.models import User, Product, Order, Category, Supplier, Manufacturer, Unit, OrderItem, PickupPoint
 
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 
 app = FastAPI(title="Магазин обуви")
 
@@ -21,6 +24,33 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 templates.env.filters["zip"] = lambda a, b: zip(a, b)
+
+
+# kitty
+def build_httpcat_page(request: Request, status_code: int, detail: str = "") -> HTMLResponse:
+    return templates.TemplateResponse(
+        "error.html",
+        {
+            "request": request,
+            "status_code": status_code,
+        },
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return build_httpcat_page(request, exc.status_code, str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return build_httpcat_page(request, 422, "Validation error in request data.")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return build_httpcat_page(request, 500, "Internal server error.")
 
 
 @app.on_event("startup")
@@ -104,8 +134,8 @@ async def products_page(
     if is_manager:
         query = query.outerjoin(Product.category).outerjoin(Product.manufacturer).outerjoin(Product.supplier)
 
-    if current_user:
-        if search and is_manager:
+    if is_manager:
+        if search:
             search_term = f"%{search}%"
             query = query.filter(
                 (Product.name.like(search_term))
@@ -118,8 +148,7 @@ async def products_page(
 
         if category:
             query = query.filter(Product.category.has(name=category))
-
-        if supplier_filter and is_manager:
+        if supplier_filter:
             query = query.filter(Product.supplier.has(name=supplier_filter))
 
         # Apply sorting
@@ -131,9 +160,9 @@ async def products_page(
             query = query.order_by(Product.name.asc())
         elif sort == "discount":
             query = query.order_by(Product.discount.desc())
-        elif sort == "stock_asc" and is_manager:
+        elif sort == "stock_asc":
             query = query.order_by(Product.stock_quantity.asc())
-        elif sort == "stock_desc" and is_manager:
+        elif sort == "stock_desc":
             query = query.order_by(Product.stock_quantity.desc())
 
     products = query.all()
@@ -370,6 +399,11 @@ async def add_product(
     if current_user.role.name != "Администратор":
         raise HTTPException(status_code=403, detail="Forbidden")
 
+    if price < 0 or stock_quantity < 0 or discount < 0:
+        request.session["flash_message"] = "Цена, количество на складе и скидка не могут быть отрицательными."
+        request.session["flash_type"] = "danger"
+        return RedirectResponse(url="/products", status_code=303)
+
     # Image upload
     filename, warning = await process_image(photo)
 
@@ -425,6 +459,11 @@ async def edit_product(
     current_user = require_login(request, db)
     if current_user.role.name != "Администратор":
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    if price < 0 or stock_quantity < 0 or discount < 0:
+        request.session["flash_message"] = "Цена, количество на складе и скидка не могут быть отрицательными."
+        request.session["flash_type"] = "danger"
+        return RedirectResponse(url="/products", status_code=303)
 
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:

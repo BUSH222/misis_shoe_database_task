@@ -10,7 +10,7 @@
     {% endif %}
 </div>
 
-{% if user %}
+{% if is_manager %}
 <div class="row mb-4">
     <div class="col-md-3">
         <input type="text" 
@@ -29,7 +29,6 @@
             {% endfor %}
         </select>
     </div>
-    {% if is_manager %}
     <div class="col-md-3">
         <select class="form-select" id="supplierFilter">
             <option value="">Все поставщики</option>
@@ -40,18 +39,15 @@
             {% endfor %}
         </select>
     </div>
-    {% endif %}
-    <div class="{% if is_manager %}col-md-3{% else %}col-md-6{% endif %}">
+    <div class="col-md-3">
         <select class="form-select" id="sortSelect">
             <option value="">Без сортировки</option>
             <option value="name" {% if current_sort == 'name' %}selected{% endif %}>По названию</option>
             <option value="price_asc" {% if current_sort == 'price_asc' %}selected{% endif %}>По цене (возр.)</option>
             <option value="price_desc" {% if current_sort == 'price_desc' %}selected{% endif %}>По цене (убыв.)</option>
             <option value="discount" {% if current_sort == 'discount' %}selected{% endif %}>По скидке</option>
-            {% if is_manager %}
             <option value="stock_asc" {% if current_sort == 'stock_asc' %}selected{% endif %}>По количеству (возр.)</option>
             <option value="stock_desc" {% if current_sort == 'stock_desc' %}selected{% endif %}>По количеству (убыв.)</option>
-            {% endif %}
         </select>
     </div>
 </div>
@@ -128,6 +124,10 @@
             <form id="productForm" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="row">
+                        <div class="col-md-6 mb-3" id="idContainer" style="display: none;">
+                            <label>ID</label>
+                            <input type="text" class="form-control" name="productId" id="formId" readonly>
+                        </div>
                         <div class="col-md-6 mb-3" id="articleContainer">
                             <label>Артикул</label>
                             <input type="text" class="form-control" name="article" id="formArticle" required>
@@ -194,7 +194,7 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if user %}
+{% if is_manager %}
 <script>
     const searchInput = document.getElementById('searchInput');
     const categoryFilter = document.getElementById('categoryFilter');
@@ -239,6 +239,8 @@
         document.getElementById('productModalTitle').innerText = 'Добавить товар';
         document.getElementById('productForm').action = '/products/add';
         
+        document.getElementById('idContainer').style.display = 'none';
+        
         document.getElementById('formArticle').value = '';
         document.getElementById('formArticle').readOnly = false;
         document.getElementById('formName').value = '';
@@ -253,8 +255,11 @@
     }
 
     function openEditModal(id, article, name, catId, desc, mfgId, supplier, price, unit, stock, discount) {
-        document.getElementById('productModalTitle').innerText = 'Редактировать товар (ID: ' + id + ')';
+        document.getElementById('productModalTitle').innerText = 'Редактировать товар';
         document.getElementById('productForm').action = '/products/' + id + '/edit';
+        
+        document.getElementById('idContainer').style.display = 'block';
+        document.getElementById('formId').value = id;
         
         document.getElementById('formArticle').value = article;
         document.getElementById('formArticle').readOnly = true;
