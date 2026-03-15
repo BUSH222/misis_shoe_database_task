@@ -5,10 +5,9 @@ import pandas as pd
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
 from src.database import engine, SessionLocal  # noqa: E402
-from src.models import Base, Role, User, Category, Supplier, Manufacturer,\
-                       Unit, Product, PickupPoint, Order, OrderItem  # noqa; E402
+from src.models import (Base, Role, User, Category, Supplier, Manufacturer,  # noqa: E402
+                        Unit, Product, PickupPoint, Order, OrderItem)  # noqa: E402
 
 
 def parse_date(date_str):
@@ -46,7 +45,6 @@ def parse_date(date_str):
         return datetime(2025, 2, 28).date()
 
     print(f"Warning: Could not parse date '{date_str}'")
-    return None
 
 
 def get_or_create(session, model, **kwargs):
