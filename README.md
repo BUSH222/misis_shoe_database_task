@@ -1,10 +1,5 @@
-# template_py
-Template repository for python projects
+[![Maintainability](https://qlty.sh/gh/BUSH222/projects/misis_shoe_database_task/maintainability.svg)](https://qlty.sh/gh/BUSH222/projects/misis_shoe_database_task)
+# Project for "Methodology of software development"
+Shoe store & database
 
-Includes:
-- Licence
-- README
-- main.py
-- github actions - lint with flake8
-- flake8 config
-- .gitignore
+NUST MISIS, 2026

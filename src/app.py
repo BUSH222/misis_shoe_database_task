@@ -125,17 +125,17 @@ async def products_page(
     user_is_manager = current_user and helper.is_manager(current_user)
     user_is_admin = current_user and helper.is_admin(current_user)
 
-    # Base query
+    # base query
     query = db.query(Product)
 
-    # Needs to join for full text search if manager/admin
+    # needs to join for full text search if manager/admin
     if user_is_manager:
         query = query.outerjoin(Product.category).outerjoin(Product.manufacturer).outerjoin(Product.supplier)
         query = helper.apply_product_filters(query, search, category, supplier_filter, sort)
 
     products = query.all()
 
-    # Get data for filters and add/edit forms
+    # get data for filters and add/edit forms
     categories = db.query(Category).all()
     category_names = [cat.name for cat in categories]
 
@@ -144,7 +144,7 @@ async def products_page(
 
     manufacturers = db.query(Manufacturer).all()
 
-    # Retrieve flash message if any
+    # any flash message?
     flash_message = request.session.pop("flash_message", None)
     flash_type = request.session.pop("flash_type", "info")
 
@@ -186,7 +186,6 @@ async def add_order(
     current_user = require_login(request, db)
     helper.require_admin(current_user)
 
-    # Check if order number exists
     existing = db.query(Order).filter(Order.order_number == order_number).first()
     if existing:
         helper.set_flash_message(request, "Данный номер заказа уже существует.", "danger")
@@ -302,10 +301,9 @@ async def add_product(
         helper.set_flash_message(request, "Цена, количество на складе/скидка не могут быть отрицательными.", "danger")
         return RedirectResponse(url="/products", status_code=303)
 
-    # Image upload
+    # image upload
     filename, warning = await helper.process_image(photo)
 
-    # Get or create string-based relations
     supplier = helper.get_or_create(db, Supplier, name=supplier_name)
     unit = helper.get_or_create(db, Unit, name=unit_name)
 
@@ -367,7 +365,7 @@ async def edit_product(
     supplier = helper.get_or_create(db, Supplier, name=supplier_name)
     unit = helper.get_or_create(db, Unit, name=unit_name)
 
-    # Process new photo if provided
+    # image
     filename, warning = await helper.process_image(photo)
     if filename:
         helper.remove_old_product_image(product.photo)
@@ -405,7 +403,6 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Check if product is in any orders
     in_order = db.query(OrderItem).filter(OrderItem.product_id == product_id).first()
     if in_order:
         helper.set_flash_message(request, "Невозможно удалить товар, так как он присутствует в заказах.", "danger")
@@ -434,7 +431,6 @@ async def orders_page(
     pickup_points = db.query(PickupPoint).all() if user_is_admin else []
     users = db.query(User).all() if user_is_admin else []
 
-    # Retrieve flash message if any
     flash_message = request.session.pop("flash_message", None)
     flash_type = request.session.pop("flash_type", "info")
 

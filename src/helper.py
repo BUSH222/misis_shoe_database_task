@@ -9,7 +9,6 @@ from src.models import User, Product, Category, Manufacturer, Supplier, OrderIte
 from fastapi import UploadFile
 
 
-# Helper functions for authorization
 def is_admin(user: User) -> bool:
     return user.role.name == "Администратор"
 
@@ -23,13 +22,11 @@ def require_admin(user: User):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-# Helper function for flash messages
 def set_flash_message(request, message: str, msg_type: str = "info"):
     request.session["flash_message"] = message
     request.session["flash_type"] = msg_type
 
 
-# Helper function for product filtering and sorting
 def apply_product_filters(query, search, category, supplier_filter, sort):
     """Apply filters and sorting to product query"""
     if search:
@@ -62,7 +59,6 @@ def apply_product_filters(query, search, category, supplier_filter, sort):
     return query
 
 
-# Helper function for order items parsing
 def parse_order_items(order_items_str: str, db: Session):
     """Parse order items string and return list of (product, quantity) tuples"""
     items = [item.strip() for item in order_items_str.split(',')]
@@ -77,7 +73,6 @@ def parse_order_items(order_items_str: str, db: Session):
     return result
 
 
-# Helper function for saving order items
 def save_order_items(order: Order, order_items_str: str, db: Session):
     """Clear and recreate order items"""
     db.query(OrderItem).filter(OrderItem.order_id == order.id).delete()
@@ -85,7 +80,6 @@ def save_order_items(order: Order, order_items_str: str, db: Session):
         db.add(OrderItem(order_id=order.id, product_id=product.id, quantity=quantity))
 
 
-# Helper function for image cleanup
 def remove_old_product_image(filename: str):
     """Remove old product image file"""
     if filename and filename != "picture.png":
@@ -97,7 +91,6 @@ def remove_old_product_image(filename: str):
                 print(f"Error removing old image: {e}")
 
 
-# Helper function for get or create
 def get_or_create(session, model, **kwargs):
     instance = session.query(model).filter_by(**kwargs).first()
     if instance:
@@ -108,7 +101,6 @@ def get_or_create(session, model, **kwargs):
     return instance
 
 
-# Helper function for image processing
 async def process_image(photo: UploadFile):
     """Returns filename and optional warning message"""
     if not photo or not photo.filename:
@@ -123,7 +115,7 @@ async def process_image(photo: UploadFile):
             img = img.resize((300, 200), Image.Resampling.LANCZOS)
             warning = "Изображение было автоматически изменено до размера 300x200."
 
-        # Ensure it's static/ safe
+        # is it safe? static? idk
         ext = os.path.splitext(photo.filename)[1]
         if not ext:
             ext = ".jpg"
